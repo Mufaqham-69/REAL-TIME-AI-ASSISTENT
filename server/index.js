@@ -9,7 +9,7 @@ const { streamAnswer } = require('./llm');
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+app.get('/', (req, res) => res.send('OK'));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 

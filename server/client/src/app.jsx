@@ -5,7 +5,7 @@ import AnswerOverlay from './components/AnswerOverlay';
 import TranscriptBar from './components/TranscriptBar';
 import SetupPanel from './components/SetupPanel';
 
-const WS_URL = 'ws://localhost:3001';
+const WS_URL = import.meta.env.VITE_WS_URL || 'wss://real-time-ai-assistent-0.onrender.com';
 
 export default function App() {
     const [started, setStarted] = useState(false);
@@ -32,7 +32,6 @@ export default function App() {
     });
 
     const handleStart = () => {
-        // Initialize session with resume
         send({ type: 'session_init', resume, role });
         start();
         setStarted(true);
@@ -53,7 +52,7 @@ export default function App() {
         if (answer && !isGenerating) {
             setHistory(prev => [
                 { question: transcript, answer, ts: Date.now() },
-                ...prev.slice(0, 9) // Keep last 10
+                ...prev.slice(0, 9)
             ]);
         }
     }, [isGenerating]);
