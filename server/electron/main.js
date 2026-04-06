@@ -1,5 +1,5 @@
 
-const { app, BrowserWindow, globalShortcut } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -10,12 +10,20 @@ function createWindow() {
         alwaysOnTop: true,        // Float above other windows
         skipTaskbar: true,        // Hidden from taskbar
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
 
     win.loadURL('http://localhost:3000');
     win.setIgnoreMouseEvents(false);
+    
+    // Hide the window from screen capture/sharing apps
+    win.setContentProtection(true);
+
+    ipcMain.on('toggle-protection', (event, state) => {
+        if (win) win.setContentProtection(state);
+    });
 
     // Hotkey to toggle visibility
     globalShortcut.register('CommandOrControl+Shift+H', () => {

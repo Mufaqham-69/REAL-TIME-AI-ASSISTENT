@@ -18,15 +18,20 @@ async function transcribeAudioChunk(base64Data) {
     const tmpPath = path.join(os.tmpdir(), `chunk_${Date.now()}.wav`);
     writeWavFile(tmpPath, buffer);
 
-    const response = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tmpPath),
-        model: 'whisper-1',
-        language: 'en',
-        response_format: 'text',
-    });
-
-    fs.unlinkSync(tmpPath); // Clean up
-    return response?.trim() || '';
+    try {
+        const response = await openai.audio.transcriptions.create({
+            file: fs.createReadStream(tmpPath),
+            model: 'whisper-1',
+            language: 'en',
+            response_format: 'text',
+        });
+        return response?.trim() || '';
+    } finally {
+        // Ensure cleanup happens even if the API throws an error
+        if (fs.existsSync(tmpPath)) {
+            fs.unlinkSync(tmpPath);
+        }
+    }
 }
 
 /**
