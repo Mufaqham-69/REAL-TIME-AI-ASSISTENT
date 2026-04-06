@@ -9,6 +9,7 @@ export function useAudioCapture({ onChunk, onSilence }) {
   const processorRef = useRef(null);
   const audioCtxRef = useRef(null);
   const silenceTimerRef = useRef(null);
+  const hasSpokenRef = useRef(false);
 
   const start = useCallback(async () => {
     try {
@@ -42,21 +43,23 @@ export function useAudioCapture({ onChunk, onSilence }) {
         // Check for silence (RMS < threshold)
         const rms = Math.sqrt(input.reduce((s, v) => s + v * v, 0) / input.length);
 
-        if (rms < 0.01) {
+        if (rms >= 0.01) {
+          hasSpokenRef.current = true;
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        } else {
           // Silence detected
-          if (!silenceTimerRef.current) {
+          if (hasSpokenRef.current && !silenceTimerRef.current) {
             silenceTimerRef.current = setTimeout(() => {
               onSilence?.();
               buffer = [];
+              hasSpokenRef.current = false;
               silenceTimerRef.current = null;
-            }, 800); // 800ms silence = end of question
+            }, 1000); // 1000ms silence = end of question
           }
-        } else {
-          clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = null;
         }
 
-        if (buffer.length >= bufferSize) {
+        if (buffer.length >= bufferSize && hasSpokenRef.current) {
           // Convert Float32 PCM → Int16 → base64
           const int16 = new Int16Array(buffer.splice(0, bufferSize).map(s =>
             Math.max(-32768, Math.min(32767, s * 32768))

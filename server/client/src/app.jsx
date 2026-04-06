@@ -13,7 +13,7 @@ export default function App() {
     const [role, setRole] = useState('');
     const [history, setHistory] = useState([]);
 
-    const { connected, transcript, answer, isGenerating, send } =
+    const { connected, transcript, answer, isGenerating, send, reset } =
         useWebSocket(WS_URL);
 
     // When silence detected, tell server to finalize
@@ -41,6 +41,11 @@ export default function App() {
     const handleStop = () => {
         stop();
         setStarted(false);
+    };
+
+    const handleRefresh = () => {
+        setHistory([]);
+        reset();
     };
 
     // Save Q&A to history
@@ -72,6 +77,7 @@ export default function App() {
                 transcript={transcript}
                 isListening={isListening}
                 onStop={handleStop}
+                onRefresh={handleRefresh}
             />
             <AnswerOverlay
                 answer={answer}

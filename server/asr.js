@@ -1,43 +1,44 @@
 require('dotenv').config();
-const OpenAI = require('openai');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
- * Transcribe a base64 PCM chunk using Whisper API.
- * For production: use Deepgram WebSocket for true streaming.
+ * Transcribe accumulated base64 PCM chunks using Whisper API securely in-memory.
  */
-async function transcribeAudioChunk(base64Data) {
-    // Decode base64 to buffer
-    const buffer = Buffer.from(base64Data, 'base64');
+async function transcribeAudioChunk(base64Chunks) {
+    if (!base64Chunks || base64Chunks.length === 0) return '';
+    if (!Array.isArray(base64Chunks)) base64Chunks = [base64Chunks];
+    
+    // Decode base64 chunks and concatenate them into a single raw PCM buffer
+    const buffers = base64Chunks.map(b => Buffer.from(b, 'base64'));
+    const pcmBuffer = Buffer.concat(buffers);
 
-    // Write to temp WAV file (Whisper needs a file, not raw PCM)
-    const tmpPath = path.join(os.tmpdir(), `chunk_${Date.now()}.wav`);
-    writeWavFile(tmpPath, buffer);
+    const wavBuffer = createWavBuffer(pcmBuffer);
+    
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const prompt = "Transcribe the speech in this audio precisely. Output ONLY the raw transcription without any conversational filler, markdown, or greetings.";
+    
+    const audioPart = {
+        inlineData: {
+            data: wavBuffer.toString("base64"),
+            mimeType: "audio/wav"
+        }
+    };
 
     try {
-        const response = await openai.audio.transcriptions.create({
-            file: fs.createReadStream(tmpPath),
-            model: 'whisper-1',
-            language: 'en',
-            response_format: 'text',
-        });
-        return response?.trim() || '';
-    } finally {
-        // Ensure cleanup happens even if the API throws an error
-        if (fs.existsSync(tmpPath)) {
-            fs.unlinkSync(tmpPath);
-        }
+        const result = await model.generateContent([prompt, audioPart]);
+        return result.response.text().trim();
+    } catch (err) {
+        console.error('Gemini ASR Error:', err.message);
+        return '';
     }
 }
 
 /**
- * Write a minimal WAV file header around raw PCM Int16 data.
+ * Creates a minimal WAV file header around raw PCM Int16 data, returning the Buffer.
  */
-function writeWavFile(filePath, pcmBuffer) {
+function createWavBuffer(pcmBuffer) {
     const sampleRate = 16000;
     const numChannels = 1;
     const bitsPerSample = 16;
@@ -59,7 +60,7 @@ function writeWavFile(filePath, pcmBuffer) {
     header.write('data', 36);
     header.writeUInt32LE(pcmBuffer.length, 40);
 
-    fs.writeFileSync(filePath, Buffer.concat([header, pcmBuffer]));
+    return Buffer.concat([header, pcmBuffer]);
 }
 
 module.exports = { transcribeAudioChunk };

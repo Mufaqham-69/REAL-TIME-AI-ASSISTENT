@@ -1,7 +1,7 @@
 require('dotenv').config();
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
  * Stream an answer to an interview question.
@@ -23,19 +23,17 @@ Instructions:
 - Do NOT include filler phrases like "Great question!" or "Certainly!"
 - Format as plain text, no markdown`;
 
-    const stream = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: 300,
-        stream: true,
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Interview question: "${question}"\n\nProvide a strong suggested answer:` }
-        ],
-        temperature: 0.7,
+    const model = genAI.getGenerativeModel({ 
+        model: 'gemini-2.5-flash',
+        systemInstruction: systemPrompt
     });
 
-    for await (const chunk of stream) {
-        const token = chunk.choices[0]?.delta?.content || '';
+    const prompt = `Interview question: "${question}"\n\nProvide a strong suggested answer:`;
+
+    const result = await model.generateContentStream(prompt);
+
+    for await (const chunk of result.stream) {
+        const token = chunk.text();
         if (token) onToken(token);
     }
 

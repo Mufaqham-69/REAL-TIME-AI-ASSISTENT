@@ -65,10 +65,16 @@ export function useWebSocket(url) {
         }
     }, []);
 
+    const reset = useCallback(() => {
+        setTranscript('');
+        setAnswer('');
+        setIsGenerating(false);
+    }, []);
+
     useEffect(() => {
         connect();
         return () => wsRef.current?.close();
     }, [connect]);
 
-    return { connected, transcript, answer, isGenerating, send };
+    return { connected, transcript, answer, isGenerating, send, reset };
 }

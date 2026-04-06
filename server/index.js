@@ -37,32 +37,28 @@ wss.on('connection', (ws) => {
             // Streaming audio chunks (base64 PCM Int16)
             case 'audio_chunk':
                 audioBuffer.push(msg.data);
-
-                // Real-time partial transcript via Deepgram (or batch via Whisper)
-                try {
-                    const partial = await transcribeAudioChunk(msg.data);
-                    if (partial) {
-                        transcriptBuffer = partial;
-                        ws.send(JSON.stringify({
-                            type: 'transcript_partial',
-                            text: transcriptBuffer
-                        }));
-                    }
-                } catch (err) {
-                    console.error('ASR error:', err.message);
-                }
                 break;
 
             // Silence detected — finalize transcript and generate answer
             case 'silence_detected':
-                if (!transcriptBuffer.trim()) {
+                if (audioBuffer.length === 0) break;
+
+                let finalText = '';
+                try {
+                    // Do one final transcription of the complete audio snippet perfectly
+                    finalText = await transcribeAudioChunk(audioBuffer);
+                } catch (err) {
+                    console.error('Final ASR error:', err.message);
+                }
+
+                if (!finalText || !finalText.trim()) {
                     audioBuffer = [];
                     break;
                 }
 
-                const finalText = transcriptBuffer.trim();
+                finalText = finalText.trim();
+                audioBuffer = []; // Reset buffers
                 transcriptBuffer = '';
-                audioBuffer = [];
 
                 // Send final transcript to client
                 ws.send(JSON.stringify({
