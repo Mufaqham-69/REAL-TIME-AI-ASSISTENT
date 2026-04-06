@@ -3,10 +3,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * Stream an answer to an interview question.
- * Injects resume context and role into the prompt.
- */
 async function streamAnswer({ question, resume, role, onToken, onDone }) {
     const systemPrompt = `You are an expert interview coach helping a candidate answer interview questions in real-time.
 
@@ -24,7 +20,7 @@ Instructions:
 - Format as plain text, no markdown`;
 
     const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.5-flash',
+        model: 'gemini-1.5-flash',  // ← fixed
         systemInstruction: systemPrompt
     });
 

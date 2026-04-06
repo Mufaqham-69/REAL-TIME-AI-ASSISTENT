@@ -3,22 +3,17 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * Transcribe accumulated base64 PCM chunks using Whisper API securely in-memory.
- */
 async function transcribeAudioChunk(base64Chunks) {
     if (!base64Chunks || base64Chunks.length === 0) return '';
     if (!Array.isArray(base64Chunks)) base64Chunks = [base64Chunks];
-    
-    // Decode base64 chunks and concatenate them into a single raw PCM buffer
+
     const buffers = base64Chunks.map(b => Buffer.from(b, 'base64'));
     const pcmBuffer = Buffer.concat(buffers);
-
     const wavBuffer = createWavBuffer(pcmBuffer);
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = "Transcribe the speech in this audio precisely. Output ONLY the raw transcription without any conversational filler, markdown, or greetings.";
-    
+
     const audioPart = {
         inlineData: {
             data: wavBuffer.toString("base64"),
@@ -35,9 +30,6 @@ async function transcribeAudioChunk(base64Chunks) {
     }
 }
 
-/**
- * Creates a minimal WAV file header around raw PCM Int16 data, returning the Buffer.
- */
 function createWavBuffer(pcmBuffer) {
     const sampleRate = 16000;
     const numChannels = 1;
@@ -50,10 +42,10 @@ function createWavBuffer(pcmBuffer) {
     header.writeUInt32LE(36 + pcmBuffer.length, 4);
     header.write('WAVE', 8);
     header.write('fmt ', 12);
-    header.writeUInt32LE(16, 16);           // PCM chunk size
-    header.writeUInt16LE(1, 20);            // PCM format
+    header.writeUInt32LE(16, 16);
+    header.writeUInt16LE(1, 20);
     header.writeUInt16LE(numChannels, 22);
-    header.writeUInt32LE(sampleRate, 26);
+    header.writeUInt32LE(sampleRate, 24);  // ← fixed offset
     header.writeUInt32LE(byteRate, 28);
     header.writeUInt16LE(blockAlign, 32);
     header.writeUInt16LE(bitsPerSample, 34);
