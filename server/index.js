@@ -3,7 +3,7 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
-const { transcribeAudioChunk } = require('./asr');
+
 const { streamAnswer } = require('./llm');
 
 const app = express();
@@ -34,33 +34,17 @@ wss.on('connection', (ws) => {
                 console.log('Session initialized for:', role);
                 break;
 
-            // Streaming audio chunks (base64 PCM Int16)
-            case 'audio_chunk':
-                audioBuffer.push(msg.data);
+            // Handle partial incoming transcripts from client native ASR
+            case 'client_transcript_partial':
+                ws.send(JSON.stringify({ type: 'transcript_partial', text: msg.text || '' }));
                 break;
 
-            // Silence detected — finalize transcript and generate answer
-            case 'silence_detected':
-                if (audioBuffer.length === 0) break;
+            // Handle final incoming transcript - triggers LLM
+            case 'client_transcript_final':
+                const finalText = (msg.text || '').trim();
+                if (!finalText) break;
 
-                let finalText = '';
-                try {
-                    // Do one final transcription of the complete audio snippet perfectly
-                    finalText = await transcribeAudioChunk(audioBuffer);
-                } catch (err) {
-                    console.error('Final ASR error:', err.message);
-                }
-
-                if (!finalText || !finalText.trim()) {
-                    audioBuffer = [];
-                    break;
-                }
-
-                finalText = finalText.trim();
-                audioBuffer = []; // Reset buffers
-                transcriptBuffer = '';
-
-                // Send final transcript to client
+                // Send final transcript back to confirm
                 ws.send(JSON.stringify({
                     type: 'transcript_final',
                     text: finalText

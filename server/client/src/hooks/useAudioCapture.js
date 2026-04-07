@@ -1,90 +1,69 @@
 import { useRef, useState, useCallback } from 'react';
 
-const SAMPLE_RATE = 16000;
-const CHUNK_MS = 250; // Send audio every 250ms
-
-export function useAudioCapture({ onChunk, onSilence }) {
+export function useAudioCapture({ onTranscript }) {
   const [isListening, setIsListening] = useState(false);
-  const streamRef = useRef(null);
-  const processorRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const silenceTimerRef = useRef(null);
-  const hasSpokenRef = useRef(false);
+  const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
 
-  const start = useCallback(async () => {
-    try {
-      // Capture system audio + mic (user selects during permission prompt)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: SAMPLE_RATE,
-          echoCancellation: true,
-          noiseSuppression: true,
-        }
-      });
-
-      streamRef.current = stream;
-      const audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
-      audioCtxRef.current = audioCtx;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-
-      // ScriptProcessor for raw PCM chunks (or use AudioWorklet for production)
-      const bufferSize = Math.floor(SAMPLE_RATE * CHUNK_MS / 1000);
-      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
-
-      let buffer = [];
-
-      processor.onaudioprocess = (e) => {
-        const input = e.inputBuffer.getChannelData(0);
-        buffer.push(...input);
-
-        // Check for silence (RMS < threshold)
-        const rms = Math.sqrt(input.reduce((s, v) => s + v * v, 0) / input.length);
-
-        if (rms >= 0.01) {
-          hasSpokenRef.current = true;
-          clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = null;
-        } else {
-          // Silence detected
-          if (hasSpokenRef.current && !silenceTimerRef.current) {
-            silenceTimerRef.current = setTimeout(() => {
-              onSilence?.();
-              buffer = [];
-              hasSpokenRef.current = false;
-              silenceTimerRef.current = null;
-            }, 1000); // 1000ms silence = end of question
-          }
-        }
-
-        if (buffer.length >= bufferSize && hasSpokenRef.current) {
-          // Convert Float32 PCM → Int16 → base64
-          const int16 = new Int16Array(buffer.splice(0, bufferSize).map(s =>
-            Math.max(-32768, Math.min(32767, s * 32768))
-          ));
-          const bytes = new Uint8Array(int16.buffer);
-          const b64 = btoa(String.fromCharCode(...bytes));
-          onChunk?.(b64);
-        }
-      };
-
-      source.connect(processor);
-      processor.connect(audioCtx.destination);
-      setIsListening(true);
-
-    } catch (err) {
-      console.error('Audio capture failed:', err);
+  const start = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.error('Web Speech API not supported in this browser.');
+      return;
     }
-  }, [onChunk, onSilence]);
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      onTranscript?.({
+        finalText: finalTranscript.trim(),
+        interimText: interimTranscript.trim()
+      });
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+    };
+
+    recognition.onend = () => {
+      if (isListeningRef.current && recognitionRef.current) {
+         try { recognition.start(); } catch(e) {}
+      }
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      isListeningRef.current = true;
+      setIsListening(true);
+    } catch(e) {
+      console.error('Failed to start recognition:', e);
+    }
+  }, [onTranscript]);
 
   const stop = useCallback(() => {
-    processorRef.current?.disconnect();
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    audioCtxRef.current?.close();
-    clearTimeout(silenceTimerRef.current);
+    isListeningRef.current = false;
     setIsListening(false);
+    if (recognitionRef.current) {
+      const rec = recognitionRef.current;
+      recognitionRef.current = null;
+      rec.stop();
+    }
   }, []);
 
   return { start, stop, isListening };
