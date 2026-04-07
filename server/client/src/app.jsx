@@ -16,17 +16,19 @@ export default function App() {
     const { connected, transcript, answer, isGenerating, send, reset } =
         useWebSocket(WS_URL);
 
-    // Send transcribed text directly to server
-    const handleTranscript = useCallback(({ finalText, interimText }) => {
-        if (finalText) {
-            send({ type: 'client_transcript_final', text: finalText });
-        } else if (interimText) {
-            send({ type: 'client_transcript_partial', text: interimText });
-        }
+    // When silence detected, tell server to finalize
+    const handleSilence = useCallback(() => {
+        send({ type: 'silence_detected' });
+    }, [send]);
+
+    // Send audio chunk to server
+    const handleChunk = useCallback((base64Chunk) => {
+        send({ type: 'audio_chunk', data: base64Chunk });
     }, [send]);
 
     const { start, stop, isListening } = useAudioCapture({
-        onTranscript: handleTranscript,
+        onChunk: handleChunk,
+        onSilence: handleSilence,
     });
 
     const handleStart = () => {
