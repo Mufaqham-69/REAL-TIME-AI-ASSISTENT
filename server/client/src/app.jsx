@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { useAudioCapture } from './hooks/useAudioCapture';
+import { useWebSpeech } from './hooks/useWebSpeech';
 import { useWebSocket } from './hooks/useWebSocket';
 import AnswerOverlay from './components/AnswerOverlay';
 import TranscriptBar from './components/TranscriptBar';
@@ -16,19 +16,17 @@ export default function App() {
     const { connected, transcript, answer, isGenerating, send, reset } =
         useWebSocket(WS_URL);
 
-    // When silence detected, tell server to finalize
-    const handleSilence = useCallback(() => {
-        send({ type: 'silence_detected' });
+    const handlePartialText = useCallback((text) => {
+        send({ type: 'text_partial', text });
     }, [send]);
 
-    // Send audio chunk to server
-    const handleChunk = useCallback((base64Chunk) => {
-        send({ type: 'audio_chunk', data: base64Chunk });
+    const handleFinalText = useCallback((text) => {
+        send({ type: 'text_question', text });
     }, [send]);
 
-    const { start, stop, isListening } = useAudioCapture({
-        onChunk: handleChunk,
-        onSilence: handleSilence,
+    const { start, stop, isListening } = useWebSpeech({
+        onPartialText: handlePartialText,
+        onFinalText: handleFinalText,
     });
 
     const handleStart = () => {

@@ -3,7 +3,6 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
-const { transcribeAudioChunk } = require('./asr');
 const { streamAnswer } = require('./llm');
 
 const app = express();
@@ -16,7 +15,6 @@ const wss = new WebSocket.Server({ server });
 wss.on('connection', (ws) => {
     console.log('Client connected');
 
-    let audioBuffer = [];
     let transcriptBuffer = '';
     let resume = '';
     let role = '';
@@ -34,42 +32,19 @@ wss.on('connection', (ws) => {
                 console.log('Session initialized for:', role);
                 break;
 
-            // Streaming audio chunks (base64 PCM Int16 or complete WAV)
-            case 'audio_chunk':
-                audioBuffer.push(msg.data);
+            case 'text_partial':
+                ws.send(JSON.stringify({ type: 'transcript_partial', text: msg.text }));
                 break;
 
-            // Silence detected — finalize transcript and generate answer
-            case 'silence_detected':
-                if (audioBuffer.length === 0) break;
+            case 'text_question':
+                const textQuestion = msg.text || '';
+                if (!textQuestion.trim()) break;
 
-                let finalText = '';
-                try {
-                    // Do one final transcription of the complete audio snippet
-                    finalText = await transcribeAudioChunk(audioBuffer);
-                } catch (err) {
-                    console.error('Final ASR error:', err.message);
-                }
+                ws.send(JSON.stringify({ type: 'transcript_final', text: textQuestion }));
 
-                if (!finalText || !finalText.trim()) {
-                    audioBuffer = [];
-                    break;
-                }
-
-                finalText = finalText.trim();
-                audioBuffer = []; // Reset buffers
-                transcriptBuffer = '';
-
-                // Send final transcript to client
-                ws.send(JSON.stringify({
-                    type: 'transcript_final',
-                    text: finalText
-                }));
-
-                // Stream LLM answer back
                 try {
                     await streamAnswer({
-                        question: finalText,
+                        question: textQuestion,
                         resume,
                         role,
                         onToken: (token) => {
