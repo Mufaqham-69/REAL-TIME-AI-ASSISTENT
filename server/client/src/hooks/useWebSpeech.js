@@ -1,15 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export function useWebSpeech({ onPartialText, onFinalText }) {
+export function useWebSpeech({ onPartialText, onFinalText, onError }) {
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
     const shouldListenRef = useRef(false);
+    const lastResultTimerRef = useRef(null);
+
+    const resetWatchdog = useCallback(() => {
+        if (lastResultTimerRef.current) clearTimeout(lastResultTimerRef.current);
+        
+        // If we don't hear anything for 20 seconds while waiting, try a hard reset
+        lastResultTimerRef.current = setTimeout(() => {
+            if (shouldListenRef.current && isListening) {
+                console.warn('[WebSpeech] Watchdog: No speech detected for 20s. Restarting...');
+                if (recognitionRef.current) {
+                    try {
+                        recognitionRef.current.stop();
+                    } catch(e) {
+                        recognitionRef.current.abort();
+                    }
+                }
+            }
+        }, 20000);
+    }, [isListening]);
 
     useEffect(() => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             console.error('Web Speech API is not supported in this browser.');
-            alert('Web Speech API is not supported in this browser. Please use Chrome or Edge.');
+            onError?.('Browser not supported.');
             return;
         }
 
@@ -19,11 +38,13 @@ export function useWebSpeech({ onPartialText, onFinalText }) {
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
-            console.log('[WebSpeech] Started listening');
+            console.log('[WebSpeech] Started');
             setIsListening(true);
+            resetWatchdog();
         };
 
         recognition.onresult = (event) => {
+            resetWatchdog(); // Got a result, reset timer
             let interimTranscript = '';
             let finalTranscript = '';
 
@@ -35,65 +56,60 @@ export function useWebSpeech({ onPartialText, onFinalText }) {
                 }
             }
 
-            if (interimTranscript && onPartialText) {
-                onPartialText(interimTranscript);
-            }
-
-            if (finalTranscript && onFinalText) {
-                onFinalText(finalTranscript.trim());
-            }
+            if (interimTranscript && onPartialText) onPartialText(interimTranscript);
+            if (finalTranscript && onFinalText) onFinalText(finalTranscript.trim());
         };
 
         recognition.onerror = (event) => {
-            console.error('[WebSpeech] Error:', event.error);
+            console.error('[WebSpeech] Recognition error:', event.error);
+            if (event.error === 'not-allowed') {
+                shouldListenRef.current = false;
+                setIsListening(false);
+                onError?.('Microphone access denied.');
+            }
         };
 
         recognition.onend = () => {
-            console.log('[WebSpeech] Ended listening');
+            console.log('[WebSpeech] Ended');
             setIsListening(false);
+            if (lastResultTimerRef.current) clearTimeout(lastResultTimerRef.current);
             
-            // Auto-restart if we didn't explicitly call stop()
-            // This handles the browser automatically terminating the session after a pause.
             if (shouldListenRef.current) {
-                console.log('[WebSpeech] Auto-restarting...');
-                try {
-                    recognition.start();
-                } catch(e) {
-                    console.error('[WebSpeech] Auto-restart failed:', e);
-                }
+                setTimeout(() => {
+                    try {
+                        recognition.start();
+                    } catch(e) {
+                        console.error('[WebSpeech] Restart failed', e);
+                    }
+                }, 150);
             }
         };
 
         recognitionRef.current = recognition;
 
         return () => {
-            if (recognitionRef.current) {
-                shouldListenRef.current = false;
-                recognitionRef.current.abort();
-            }
+            shouldListenRef.current = false;
+            if (lastResultTimerRef.current) clearTimeout(lastResultTimerRef.current);
+            recognition.abort();
         };
-    }, [onPartialText, onFinalText]);
+    }, [onPartialText, onFinalText, onError, resetWatchdog]);
 
     const start = useCallback(() => {
         shouldListenRef.current = true;
-        if (recognitionRef.current && !isListening) {
+        if (recognitionRef.current) {
             try {
                 recognitionRef.current.start();
             } catch (err) {
-                console.error('[WebSpeech] Could not start:', err);
+                console.warn('[WebSpeech] Start warning:', err.message);
             }
         }
-    }, [isListening]);
+    }, []);
 
     const stop = useCallback(() => {
         shouldListenRef.current = false;
         if (recognitionRef.current) {
-            try {
-                recognitionRef.current.stop();
-                setIsListening(false);
-            } catch (err) {
-                console.error('[WebSpeech] Could not stop:', err);
-            }
+            recognitionRef.current.stop();
+            setIsListening(false);
         }
     }, []);
 

@@ -4,36 +4,47 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function streamAnswer({ question, resume, role, onToken, onDone }) {
-    const systemPrompt = `You are an expert interview coach helping a candidate answer interview questions in real-time.
+    console.log('[LLM] Refined Gemma 3 Stream for:', question);
+    
+    // Highly refined persona for Gemma to match Gemini-tier quality
+    const systemContext = `You are a world-class executive interview coach. You are helping a top-tier candidate practice for their interview.
 
-Role being interviewed for: ${role}
+Target Role: ${role}
+Candidate Context: ${resume || 'General high-level candidate.'}
 
-Candidate's resume/background:
-${resume || 'No resume provided. Give general best-practice answers.'}
+STRICT RESPONSE RULES:
+1. Be concise but extremely high-impact (3-5 sentences total).
+2. For behavioral questions, use a laser-focused STAR structure (Situation, Task, Action, Result).
+3. For technical questions, mention industry-standard terminologies and best practices.
+4. Speak as if you are advising a CEO. No fluff. No filler.
+5. Provide a suggested answer that the candidate should say, not advice about how to answer.
+6. Format as plain text ONLY.`;
 
-Instructions:
-- Give a concise, confident, well-structured answer (2-4 sentences for behavioral, 3-6 for technical)
-- Use the STAR method (Situation, Task, Action, Result) for behavioral questions
-- For technical questions, be precise and mention key concepts
-- Match the tone to the question type (conversational for HR, precise for technical)
-- Do NOT include filler phrases like "Great question!" or "Certainly!"
-- Format as plain text, no markdown`;
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 
-    const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',  // ← fixed
-        systemInstruction: systemPrompt
-    });
+        const prompt = `${systemContext}\n\n[TRANSCRIPT]: "${question}"\n\n[COACH SUGGESTED ANSWER]:`;
 
-    const prompt = `Interview question: "${question}"\n\nProvide a strong suggested answer:`;
+        const result = await model.generateContentStream({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0.4, // Lower temperature for more consistent, professional quality
+                topP: 0.8,
+                maxOutputTokens: 256,
+            }
+        });
 
-    const result = await model.generateContentStream(prompt);
+        for await (const chunk of result.stream) {
+            const token = chunk.text();
+            if (token) onToken(token);
+        }
 
-    for await (const chunk of result.stream) {
-        const token = chunk.text();
-        if (token) onToken(token);
+        console.log('[LLM] Completed refined stream');
+        onDone?.();
+    } catch (err) {
+        console.error('[LLM] Refined Error:', err);
+        throw err;
     }
-
-    onDone?.();
 }
 
 module.exports = { streamAnswer };

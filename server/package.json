@@ -4,7 +4,8 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "electron": "electron electron/main.js"
   },
   "dependencies": {
     "@deepgram/sdk": "^2.4.0",
