@@ -1,46 +1,71 @@
-import React, { useState } from 'react';
-
-const getElectron = () => {
-    try {
-        if (typeof window !== 'undefined' && typeof window.require === 'function') {
-            return window.require('electron');
-        }
-    } catch (_) {}
-    return null;
-};
-
-const electron = getElectron();
+import React, { useState, useEffect } from 'react';
 
 export default function TranscriptBar({ transcript, isListening, onStop, onRefresh }) {
-    const [isHidden, setIsHidden] = useState(true);
+    const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
+    const [isGhostProtected, setIsGhostProtected] = useState(true);
+
+    useEffect(() => {
+        if (window.electronAPI?.onProtectionChanged) {
+            const cleanup = window.electronAPI.onProtectionChanged((status) => {
+                setIsGhostProtected(status);
+            });
+            return cleanup;
+        }
+    }, []);
 
     const toggleProtection = () => {
-        const newState = !isHidden;
-        setIsHidden(newState);
-        if (electron?.ipcRenderer) {
-            electron.ipcRenderer.send('toggle-protection', newState);
+        const newState = !isGhostProtected;
+        setIsGhostProtected(newState);
+        if (window.electronAPI?.setProtection) {
+            window.electronAPI.setProtection(newState);
+        }
+    };
+
+    const handleHide = () => {
+        if (window.electronAPI?.hideWindow) {
+            window.electronAPI.hideWindow();
         }
     };
 
     return (
-        <div className="transcript-bar">
-            <div className="transcript-info">
+        <div className="transcript-bar" style={{ WebkitAppRegion: 'drag' }}>
+            <div className="transcript-info" style={{ WebkitAppRegion: 'no-drag' }}>
                 <span className={`mic-dot ${isListening ? 'active' : ''}`} />
                 <span className="transcript-text">
-                    {transcript || (isListening ? 'Listening for interviewer...' : 'Standby')}
+                    {transcript || (isListening ? 'Listening for speech...' : 'Mic Standby')}
                 </span>
             </div>
-            <div className="bar-actions">
-                {electron && (
-                    <button 
-                        onClick={toggleProtection} 
-                        className="refresh-btn"
-                        style={{ backgroundColor: isHidden ? '#6d28d9' : '#334155' }}
-                        title="Toggle anti-screen-share protection"
-                    >
-                        {isHidden ? '🙈 Hidden' : '👀 Visible'}
-                    </button>
+
+            <div className="bar-actions" style={{ WebkitAppRegion: 'no-drag' }}>
+                {isElectron ? (
+                    <>
+                        <button 
+                            onClick={toggleProtection} 
+                            className="ghost-toggle-btn"
+                            style={{ 
+                                background: isGhostProtected ? 'linear-gradient(135deg, #10b981, #059669)' : '#ef4444',
+                                color: '#fff'
+                            }}
+                            title={isGhostProtected 
+                                ? "Ghost Mode ACTIVE: This window is INVISIBLE to Zoom, Teams, Meet & Slack screen sharing!" 
+                                : "Ghost Mode DISABLED: Window is visible to screen share"}
+                        >
+                            {isGhostProtected ? '🛡️ Ghost: Hidden from Share' : '⚠️ Ghost: Off (Visible)'}
+                        </button>
+                        <button 
+                            onClick={handleHide} 
+                            className="refresh-btn"
+                            title="Hide window (Press Ctrl+Shift+H to bring back)"
+                        >
+                            _ Hide
+                        </button>
+                    </>
+                ) : (
+                    <span className="browser-mode-tag" title="Screen protection requires the Electron app">
+                        🌐 Web Mode
+                    </span>
                 )}
+                
                 <button onClick={onRefresh} className="refresh-btn" title="Reset Session">
                     ↻ Refresh
                 </button>

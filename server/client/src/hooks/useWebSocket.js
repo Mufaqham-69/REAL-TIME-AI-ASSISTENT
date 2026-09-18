@@ -52,6 +52,14 @@ export function useWebSocket(url) {
                             setTranscript(msg.text);
                             break;
 
+                        case 'asr_start':
+                            setMetrics(m => ({ ...m, asr: 0, llm: 0 }));
+                            break;
+
+                        case 'asr_empty':
+                            console.log('[WebSocket] ASR detected background noise or silence.');
+                            break;
+
                         case 'transcript_final':
                             console.log('[WebSocket] Received transcript_final:', msg.text);
                             setTranscript(msg.text);
@@ -59,7 +67,9 @@ export function useWebSocket(url) {
                             setError(null);
                             setIsGenerating(true);
                             
-                            if (turnStartRef.current) {
+                            if (msg.asrTime) {
+                                setMetrics(m => ({ ...m, asr: msg.asrTime }));
+                            } else if (turnStartRef.current) {
                                 const asrTime = now - turnStartRef.current;
                                 setMetrics(m => ({ ...m, asr: asrTime }));
                             }
@@ -123,6 +133,11 @@ export function useWebSocket(url) {
                 setError(null);
                 turnStartRef.current = Date.now();
                 setMetrics({ audio: Math.floor(Math.random() * 30) + 10, asr: 0, llm: 0, display: 0 });
+                setTotalTime(0);
+            } else if (data.type === 'audio_chunk') {
+                setError(null);
+                turnStartRef.current = Date.now();
+                setMetrics({ audio: Math.round(data.durationMs || 30), asr: 0, llm: 0, display: 0 });
                 setTotalTime(0);
             }
             try {

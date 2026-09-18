@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useAudioCapture } from './hooks/useAudioCapture';
 import { useWebSpeech } from './hooks/useWebSpeech';
 import { useWebSocket } from './hooks/useWebSocket';
-import { useAudioLevel } from './hooks/useAudioLevel';
 import AnswerOverlay from './components/AnswerOverlay';
 import TranscriptBar from './components/TranscriptBar';
 import SetupPanel from './components/SetupPanel';
@@ -11,6 +11,7 @@ import './app.css';
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
 export default function App() {
+    const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
     const [started, setStarted] = useState(false);
     const [resume, setResume] = useState('');
     const [role, setRole] = useState('');
@@ -33,6 +34,25 @@ export default function App() {
         error: wsError
     } = useWebSocket(WS_URL);
 
+    // 1. Primary Audio Engine: Gemini Audio Stream (WAV 16kHz + VAD)
+    // Works reliably in both Electron and any browser!
+    const handleAudioChunk = useCallback((base64Data, durationMs) => {
+        send({ type: 'audio_chunk', data: base64Data, durationMs });
+    }, [send]);
+
+    const { 
+        start: startAudio, 
+        stop: stopAudio, 
+        flushNow: flushAudioNow, 
+        isListening: isAudioListening, 
+        isSpeaking, 
+        audioLevel 
+    } = useAudioCapture({
+        onChunk: handleAudioChunk,
+        onError: (err) => setAsrError(err)
+    });
+
+    // 2. Secondary interim speech recognition (Chrome only)
     const handlePartialText = useCallback((text) => {
         send({ type: 'text_partial', text });
     }, [send]);
@@ -43,27 +63,24 @@ export default function App() {
         send({ type: 'text_question', text: text.trim() });
     }, [send]);
 
-    const handleAsrError = useCallback((err) => {
-        setAsrError(err);
-    }, []);
-
-    const { start, stop, isListening } = useWebSpeech({
+    const { start: startSpeech, stop: stopSpeech } = useWebSpeech({
         onPartialText: handlePartialText,
         onFinalText: handleFinalText,
-        onError: handleAsrError
+        onError: () => {} // Silent fallback since Gemini Audio is primary
     });
 
-    const audioLevel = useAudioLevel(isListening);
-
-    const handleStart = () => {
+    const handleStart = async () => {
         setAsrError(null);
         send({ type: 'session_init', resume, role });
-        start();
+        await startAudio();
+        // Try WebSpeech in background if supported (Chrome)
+        try { startSpeech(); } catch (_) {}
         setStarted(true);
     };
 
     const handleStop = () => {
-        stop();
+        stopAudio();
+        stopSpeech();
         setStarted(false);
     };
 
@@ -104,6 +121,7 @@ export default function App() {
                 setRole={setRole}
                 onStart={handleStart}
                 connected={connected}
+                isElectron={isElectron}
             />
         );
     }
@@ -112,28 +130,55 @@ export default function App() {
         <div className="app-container">
             <TranscriptBar
                 transcript={transcript}
-                isListening={isListening}
+                isListening={isAudioListening}
                 onStop={handleStop}
                 onRefresh={handleRefresh}
             />
             
             <main className="main-content">
+                {/* Ghost Mode Status Banner */}
+                {isElectron ? (
+                    <div className="ghost-banner-active">
+                        <span className="ghost-shield">🛡️</span>
+                        <div className="ghost-text">
+                            <strong>Ghost Mode Active:</strong> This overlay is <strong>100% invisible</strong> to Zoom, Teams, Meet & Slack screen sharing.
+                        </div>
+                    </div>
+                ) : (
+                    <div className="ghost-banner-web">
+                        <span className="ghost-shield">⚠️</span>
+                        <div className="ghost-text">
+                            <strong>Browser Mode:</strong> Regular browsers are visible on screen share. For invisible ghost mode, run: <code>npm run electron</code>
+                        </div>
+                    </div>
+                )}
+
                 <div className="telemetry-wrapper">
                     <TelemetryBar 
                         metrics={metrics} 
                         totalTime={totalTime} 
                     />
                     
-                    {/* Visual Audio Meter */}
-                    {isListening && (
+                    {/* Visual Live Mic Meter & Status */}
+                    {isAudioListening && (
                         <div className="audio-meter-container">
-                            <div className="audio-meter-label">Live Mic:</div>
+                            <div className="audio-meter-label">
+                                {isSpeaking ? '🎤 Speaking:' : 'Live Mic:'}
+                            </div>
                             <div className="audio-meter-track">
                                 <div 
-                                    className="audio-meter-fill" 
-                                    style={{ width: `${audioLevel}%` }}
+                                    className={`audio-meter-fill ${isSpeaking ? 'speaking' : ''}`}
+                                    style={{ width: `${Math.max(audioLevel, 4)}%` }}
                                 />
                             </div>
+                            <span className="audio-level-pct">{audioLevel}%</span>
+                            <button 
+                                onClick={flushAudioNow} 
+                                className="flush-audio-btn" 
+                                title="Click to immediately transcribe and answer what you just said without waiting for silence"
+                            >
+                                ⚡ Send Audio
+                            </button>
                         </div>
                     )}
                 </div>
@@ -141,8 +186,8 @@ export default function App() {
                 {asrError && (
                     <div className="asr-error-banner">
                         <span className="error-icon">⚠</span>
-                        <span className="error-text">Audio Error: {asrError}</span>
-                        <button onClick={start} className="retry-btn">Restart Mic</button>
+                        <span className="error-text">{asrError}</span>
+                        <button onClick={handleStart} className="retry-btn">Retry Mic</button>
                     </div>
                 )}
                 

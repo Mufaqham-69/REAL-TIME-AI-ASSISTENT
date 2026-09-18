@@ -48,26 +48,27 @@ npm install
 
 ## ▶️ Running the Application
 
-This is a multi-service application. You'll need three separate terminal windows to run the stack locally.
-
-**1. Start the Backend Server**
+### Option A: Run Both Backend & Frontend in One Command (Recommended)
+From the root directory:
 ```bash
-cd server
-npm start
-```
-*Runs on `http://localhost:3001`*
-
-**2. Start the Frontend Client**
-```bash
-cd server/client
 npm run dev
 ```
-*Runs on `http://localhost:3000`*
+* Backend starts on **`http://localhost:3001`**
+* Frontend client starts on **`http://localhost:5173`**
 
-**3. Launch the Electron Overlay**
+### Option B: Run in Separate Terminals
+1. **Start the Backend Server**:
+   ```bash
+   npm run server
+   ```
+2. **Start the Frontend Client**:
+   ```bash
+   npm run client
+   ```
+
+### 3. (Optional) Launch the Floating Desktop Electron Overlay
 ```bash
-cd server
-npx electron ./electron/main.js
+npm run electron
 ```
 
 ### ⌨️ User Controls & Shortcuts

@@ -10,10 +10,10 @@ async function transcribeAudioChunk(base64Chunks) {
     // and sends it as base64. Take the most recent chunk if there are multiple.
     const audioData = Array.isArray(base64Chunks) ? base64Chunks[base64Chunks.length - 1] : base64Chunks;
 
-    if (!audioData) return '';
+    if (!audioData || typeof audioData !== 'string' || audioData.length < 50) return '';
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const prompt = "Transcribe the speech in this audio precisely. Output ONLY the raw transcription without any conversational filler, markdown, or greetings. If there is no speech, return an empty string.";
+    const prompt = "Transcribe the English speech in this audio recording accurately. Output ONLY the raw spoken words as plain text without quotation marks, bullet points, formatting, or conversational replies. If there is no clear human speech, or only silence/background noise, reply with exactly: NO_SPEECH";
 
     const audioPart = {
         inlineData: {
@@ -24,13 +24,22 @@ async function transcribeAudioChunk(base64Chunks) {
 
     try {
         const result = await model.generateContent([prompt, audioPart]);
-        const text = result.response.text().trim();
-        console.log('[ASR] Transcribed:', text);
+        let text = result.response.text().trim();
+        
+        // Strip out surrounding quotes if model added them
+        text = text.replace(/^["']|["']$/g, '').trim();
+
+        if (text === 'NO_SPEECH' || text.toLowerCase().includes('no speech') || text.length < 2) {
+            return '';
+        }
+
+        console.log('[ASR] Transcribed speech:', text);
         return text;
     } catch (err) {
-        console.error('Gemini ASR Error:', err.message);
+        console.error('[ASR] Gemini ASR Error:', err.message);
         return '';
     }
 }
 
 module.exports = { transcribeAudioChunk };
+

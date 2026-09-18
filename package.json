@@ -4,6 +4,7 @@
   "private": true,
   "description": "Real-Time AI Assistant for live interview coaching",
   "scripts": {
+    "dev": "node scripts/start-all.js",
     "server": "npm --prefix server start",
     "client": "npm --prefix server/client run dev",
     "electron": "npm --prefix server run electron",
