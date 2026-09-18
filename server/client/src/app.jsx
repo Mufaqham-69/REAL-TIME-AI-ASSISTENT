@@ -6,7 +6,7 @@ import AnswerOverlay from './components/AnswerOverlay';
 import TranscriptBar from './components/TranscriptBar';
 import SetupPanel from './components/SetupPanel';
 import TelemetryBar from './components/TelemetryBar';
-import './App.css';
+import './app.css';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
@@ -16,6 +16,10 @@ export default function App() {
     const [role, setRole] = useState('');
     const [history, setHistory] = useState([]);
     const [asrError, setAsrError] = useState(null);
+    const [manualInput, setManualInput] = useState('');
+
+    const wasGeneratingRef = useRef(false);
+    const lastQuestionRef = useRef('');
 
     const { 
         connected, 
@@ -34,7 +38,9 @@ export default function App() {
     }, [send]);
 
     const handleFinalText = useCallback((text) => {
-        send({ type: 'text_question', text });
+        if (!text || text.trim().length < 3) return;
+        lastQuestionRef.current = text.trim();
+        send({ type: 'text_question', text: text.trim() });
     }, [send]);
 
     const handleAsrError = useCallback((err) => {
@@ -64,18 +70,30 @@ export default function App() {
     const handleRefresh = () => {
         setHistory([]);
         setAsrError(null);
+        setManualInput('');
         reset();
     };
 
-    // Save Q&A to history
+    const handleManualSubmit = (e) => {
+        e.preventDefault();
+        if (!manualInput.trim() || isGenerating) return;
+        const q = manualInput.trim();
+        lastQuestionRef.current = q;
+        send({ type: 'manual_trigger', text: q });
+        setManualInput('');
+    };
+
+    // Save Q&A to history reliably when generation finishes
     useEffect(() => {
-        if (answer && !isGenerating && !wsError && !asrError) {
+        if (wasGeneratingRef.current && !isGenerating && answer && !wsError) {
+            const currentQ = lastQuestionRef.current || transcript || 'Question';
             setHistory(prev => [
-                { question: transcript, answer, ts: Date.now() },
+                { question: currentQ, answer, ts: Date.now() },
                 ...prev.slice(0, 9)
             ]);
         }
-    }, [isGenerating, wsError, asrError]);
+        wasGeneratingRef.current = isGenerating;
+    }, [isGenerating, answer, wsError, transcript]);
 
     if (!started) {
         return (
@@ -134,6 +152,20 @@ export default function App() {
                     history={history}
                     error={wsError}
                 />
+
+                {/* Quick Manual Question Bar */}
+                <form onSubmit={handleManualSubmit} className="manual-prompt-bar">
+                    <input
+                        type="text"
+                        value={manualInput}
+                        onChange={(e) => setManualInput(e.target.value)}
+                        placeholder="Type interview question manually or speak into mic..."
+                        disabled={isGenerating}
+                    />
+                    <button type="submit" disabled={!manualInput.trim() || isGenerating}>
+                        {isGenerating ? 'Answering...' : 'Ask'}
+                    </button>
+                </form>
             </main>
         </div>
     );

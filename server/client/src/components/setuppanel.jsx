@@ -4,7 +4,7 @@ export default function SetupPanel({ resume, setResume, role, setRole, onStart, 
     return (
         <div className="setup-panel">
             <h1>🎙️ Interview Assistant</h1>
-            <p className="status">{connected ? '🟢 Server connected' : '🔴 Connecting...'}</p>
+            <p className="status">{connected ? '🟢 Server connected' : '🔴 Connecting to server...'}</p>
 
             <div className="field">
                 <label>Target Role</label>
@@ -22,10 +22,10 @@ export default function SetupPanel({ resume, setResume, role, setRole, onStart, 
                     onChange={e => setResume(e.target.value)}
                     rows={8}
                     placeholder={`e.g.
-5 years React/Node.js experience
-Led team of 4 engineers at Startup X
-Built payment system processing $2M/day
-MS Computer Science, Stanford`}
+• 5+ years building full-stack applications with React & Node.js
+• Led architecture of real-time distributed microservices
+• Improved system throughput by 40% using event-driven design
+• MS Computer Science`}
                 />
             </div>
 
@@ -34,7 +34,7 @@ MS Computer Science, Stanford`}
                 disabled={!connected}
                 className="start-btn"
             >
-                Start Listening
+                {connected ? 'Start Live Assistant' : 'Connecting to Server...'}
             </button>
         </div>
     );

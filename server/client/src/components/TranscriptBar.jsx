@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 
-const electron = window.require ? window.require('electron') : null;
+const getElectron = () => {
+    try {
+        if (typeof window !== 'undefined' && typeof window.require === 'function') {
+            return window.require('electron');
+        }
+    } catch (_) {}
+    return null;
+};
+
+const electron = getElectron();
 
 export default function TranscriptBar({ transcript, isListening, onStop, onRefresh }) {
     const [isHidden, setIsHidden] = useState(true);
@@ -8,35 +17,35 @@ export default function TranscriptBar({ transcript, isListening, onStop, onRefre
     const toggleProtection = () => {
         const newState = !isHidden;
         setIsHidden(newState);
-        if (electron) {
+        if (electron?.ipcRenderer) {
             electron.ipcRenderer.send('toggle-protection', newState);
         }
     };
 
     return (
         <div className="transcript-bar">
-            <div className="left">
+            <div className="transcript-info">
                 <span className={`mic-dot ${isListening ? 'active' : ''}`} />
                 <span className="transcript-text">
-                    {transcript || 'Listening...'}
+                    {transcript || (isListening ? 'Listening for interviewer...' : 'Standby')}
                 </span>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="bar-actions">
                 {electron && (
                     <button 
                         onClick={toggleProtection} 
-                        className="stop-btn"
-                        style={{ backgroundColor: isHidden ? '#8e44ad' : '#555' }}
-                        title="Toggle visibility during screen share"
+                        className="refresh-btn"
+                        style={{ backgroundColor: isHidden ? '#6d28d9' : '#334155' }}
+                        title="Toggle anti-screen-share protection"
                     >
                         {isHidden ? '🙈 Hidden' : '👀 Visible'}
                     </button>
                 )}
-                <button onClick={onRefresh} className="stop-btn" style={{ backgroundColor: '#2980b9' }} title="Reset Conversation">
+                <button onClick={onRefresh} className="refresh-btn" title="Reset Session">
                     ↻ Refresh
                 </button>
-                <button onClick={onStop} className="stop-btn" title="Go back to setup menu">
-                    ← Back
+                <button onClick={onStop} className="stop-btn" title="Back to setup">
+                    ← Setup
                 </button>
             </div>
         </div>

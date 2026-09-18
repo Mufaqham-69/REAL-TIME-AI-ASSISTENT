@@ -1,0 +1,12 @@
+{
+  "name": "real-time-ai-assistant-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-Time AI Assistant for live interview coaching",
+  "scripts": {
+    "server": "npm --prefix server start",
+    "client": "npm --prefix server/client run dev",
+    "electron": "npm --prefix server run electron",
+    "build:client": "npm --prefix server/client run build"
+  }
+}

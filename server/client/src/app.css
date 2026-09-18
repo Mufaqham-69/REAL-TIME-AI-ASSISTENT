@@ -503,3 +503,50 @@ body {
     color: #cbd5e1;
     line-height: 1.5;
 }
+
+/* Manual Prompt Input Bar */
+.manual-prompt-bar {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.manual-prompt-bar input {
+    flex: 1;
+    background: #090d14;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.manual-prompt-bar input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.manual-prompt-bar button {
+    background: var(--accent);
+    color: #06080c;
+    border: none;
+    border-radius: 10px;
+    padding: 0 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.manual-prompt-bar button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px var(--accent-dim);
+}
+
+.manual-prompt-bar button:disabled {
+    background: #1e293b;
+    color: #64748b;
+    cursor: not-allowed;
+}
