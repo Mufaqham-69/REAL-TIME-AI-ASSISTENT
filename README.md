@@ -79,3 +79,9 @@ Once the Electron overlay is floating on your screen, it will stay on top of all
 The WebSocket architecture makes it extremely easy to plug in custom or locally-built models. If you are building a fine-tuned model for this app:
 1. Go into `server/index.js` and locate the `streamAnswer()` block execution inside the `client_transcript_final` switch case.
 2. Direct the `question` payload to your custom model's inference API (e.g., local Ollama, huggingface endpoint) and simply fire `ws.send({ type: 'answer_chunk', token })` as your new model streams its response!
+
+
+
+
+LIVE on :
+https://real-time-ai-assistent-x0c6.onrender.com
