@@ -13,21 +13,26 @@ const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 async function streamAnswer({ question, resume, role, onToken, onDone }) {
     console.log('[LLM] Generating answer for question:', question);
     
-    // Highly refined persona for interview coaching
-    const systemContext = `You are a world-class executive interview coach. You are helping a top-tier candidate practice for their live interview.
+    // Highly refined persona for live interview coaching
+    const systemContext = `You are a world-class executive interview coach assisting a top-tier candidate in a live interview.
 
-Target Role: ${role || 'Software Engineering / Tech Professional'}
-Candidate Context: ${resume || 'General high-level candidate.'}
+Target Role: ${role || 'Software Engineering / Technical Specialist'}
+Candidate Context / Resume: ${resume || 'Senior-level engineering professional.'}
 
-STRICT RESPONSE RULES:
-1. Be concise, direct, and extremely high-impact (3-5 sentences maximum).
-2. For behavioral questions, use a laser-focused STAR structure (Situation, Task, Action, Result).
-3. For technical questions, mention industry-standard terminologies, architectures, and best practices.
-4. Speak in the first person as the candidate directly answering the interviewer ("I did...", "My approach is...").
-5. No conversational filler, no meta-advice (do NOT say "Here is an answer:"), just the direct answer.
-6. Format as plain text ONLY.`;
+MANDATORY RESPONSE FORMAT & VISIBILITY RULES:
+1. Speak in the first person as the candidate directly answering the interviewer ("I...", "My approach...").
+2. ALWAYS divide the answer into 3 to 4 distinct, clearly separated talking points.
+3. Every talking point MUST start on its own line with a bullet and bold category label:
+   • **[Direct Strategy / Core Approach]:** [1-2 concise, impactful sentences]
+   
+   • **[Action / Architecture / Implementation]:** [1-2 sentences with concrete technologies, trade-offs, or methodologies]
+   
+   • **[Quantified Result / Business Impact]:** [1-2 sentences with concrete metrics, uptime, latency, scale, or outcomes]
+4. ALWAYS leave a BLANK line between each bullet point so they never merge into a congested wall of text.
+5. Emphasize key tools, frameworks, and metrics in **bold** (e.g., **99.9% uptime**, **Apache Kafka**, **40% latency reduction**).
+6. NEVER include conversational pleasantries ("Sure, here is how to answer", "That is a great question"). Output ONLY the candidate's exact spoken words.`;
 
-    const prompt = `${systemContext}\n\n[INTERVIEW QUESTION]: "${question}"\n\n[YOUR DIRECT ANSWER]:`;
+    const prompt = `${systemContext}\n\n[INTERVIEW QUESTION]: "${question}"\n\n[SEPARATED TALKING POINTS ANSWER]:`;
 
     const tryGenerate = async (modelName) => {
         const model = genAI.getGenerativeModel({ model: modelName });

@@ -112,6 +112,8 @@ export default function App() {
         wasGeneratingRef.current = isGenerating;
     }, [isGenerating, answer, wsError, transcript]);
 
+    const [dismissBanner, setDismissBanner] = useState(false);
+
     if (!started) {
         return (
             <SetupPanel
@@ -136,21 +138,39 @@ export default function App() {
             />
             
             <main className="main-content">
-                {/* Ghost Mode Status Banner */}
-                {isElectron ? (
-                    <div className="ghost-banner-active">
-                        <span className="ghost-shield">🛡️</span>
-                        <div className="ghost-text">
-                            <strong>Ghost Mode Active:</strong> This overlay is <strong>100% invisible</strong> to Zoom, Teams, Meet & Slack screen sharing.
+                {/* Ghost Mode Status Banner - Dismissible */}
+                {!dismissBanner && (
+                    isElectron ? (
+                        <div className="ghost-banner-active">
+                            <span className="ghost-shield">🛡️</span>
+                            <div className="ghost-text">
+                                <strong>Ghost Mode Active:</strong> Invisible to Zoom, Teams, Meet & Slack screen sharing.
+                            </div>
+                            <button 
+                                type="button" 
+                                className="banner-dismiss-btn"
+                                onClick={() => setDismissBanner(true)}
+                                title="Dismiss banner"
+                            >
+                                ✕
+                            </button>
                         </div>
-                    </div>
-                ) : (
-                    <div className="ghost-banner-web">
-                        <span className="ghost-shield">⚠️</span>
-                        <div className="ghost-text">
-                            <strong>Browser Mode:</strong> Regular browsers are visible on screen share. For invisible ghost mode, run: <code>npm run electron</code>
+                    ) : (
+                        <div className="ghost-banner-web">
+                            <span className="ghost-shield">⚠️</span>
+                            <div className="ghost-text">
+                                <strong>Browser Mode:</strong> Regular browsers are visible on screen share. For invisible ghost mode, run: <code>npm run electron</code>
+                            </div>
+                            <button 
+                                type="button" 
+                                className="banner-dismiss-btn"
+                                onClick={() => setDismissBanner(true)}
+                                title="Dismiss banner"
+                            >
+                                ✕
+                            </button>
                         </div>
-                    </div>
+                    )
                 )}
 
                 <div className="telemetry-wrapper">
@@ -173,6 +193,7 @@ export default function App() {
                             </div>
                             <span className="audio-level-pct">{audioLevel}%</span>
                             <button 
+                                type="button"
                                 onClick={flushAudioNow} 
                                 className="flush-audio-btn" 
                                 title="Click to immediately transcribe and answer what you just said without waiting for silence"
@@ -187,7 +208,7 @@ export default function App() {
                     <div className="asr-error-banner">
                         <span className="error-icon">⚠</span>
                         <span className="error-text">{asrError}</span>
-                        <button onClick={handleStart} className="retry-btn">Retry Mic</button>
+                        <button type="button" onClick={handleStart} className="retry-btn">Retry Mic</button>
                     </div>
                 )}
                 
