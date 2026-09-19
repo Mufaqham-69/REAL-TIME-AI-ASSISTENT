@@ -1711,3 +1711,340 @@ body {
     margin-top: 6px;
     font-weight: 500;
 }
+
+/* =========================================================
+   3. Mobile Responsiveness & Touch Optimization
+   ========================================================= */
+
+/* Tablets & Small Laptops (<= 960px) */
+@media (max-width: 960px) {
+    .setup-card {
+        max-width: 94vw;
+    }
+    .transcript-bar, .main-content {
+        max-width: 96vw;
+    }
+}
+
+/* Mobile Devices & Small Tablets (<= 768px) */
+@media (max-width: 768px) {
+    /* Allow mobile scroll on setup page for virtual keyboards */
+    html, body, #root {
+        height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+        overflow-x: hidden;
+    }
+
+    /* Setup Screen on Mobile */
+    .setup-panel-wrapper {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 12px 10px 24px;
+        align-items: flex-start;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .setup-card {
+        max-height: none;
+        height: auto;
+        padding: 14px 14px 18px;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .setup-header {
+        padding-bottom: 8px;
+    }
+
+    .app-logo-box {
+        width: 32px;
+        height: 32px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+    }
+
+    .app-title {
+        font-size: 1.02rem;
+    }
+
+    .app-subtitle {
+        font-size: 0.68rem;
+    }
+
+    .status-dot {
+        font-size: 0.72rem;
+    }
+
+    .ghost-badge {
+        font-size: 0.68rem;
+        padding: 2px 8px;
+    }
+
+    .setup-notice-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    /* Stack to Single Column on Mobile */
+    .setup-main-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    /* Prevent iOS auto-zoom on inputs by ensuring 16px font-size */
+    .field-input,
+    .setup-textarea,
+    .manual-prompt-bar input {
+        font-size: 16px !important;
+    }
+
+    .field-input {
+        height: 42px;
+    }
+
+    .compact-dropzone {
+        min-height: 72px;
+        padding: 8px 12px;
+    }
+
+    .dropzone-inner .dropzone-icon {
+        font-size: 1.3rem;
+    }
+
+    .dropzone-meta strong {
+        font-size: 0.82rem;
+    }
+
+    .dropzone-meta span {
+        font-size: 0.7rem;
+    }
+
+    /* Hide desktop keyboard shortcut hints on touch devices */
+    .setup-shortcuts-card {
+        display: none;
+    }
+
+    .setup-textarea {
+        min-height: 120px;
+        max-height: 180px;
+        padding: 10px 12px;
+        line-height: 1.5;
+    }
+
+    .setup-footer {
+        padding-top: 10px;
+    }
+
+    .start-session-btn {
+        max-width: 100%;
+        height: 46px;
+        font-size: 0.92rem;
+    }
+
+    /* Main Interview Screen on Mobile */
+    .app-container {
+        height: 100vh;
+        height: 100dvh;
+        max-height: 100dvh;
+        overflow: hidden;
+    }
+
+    .transcript-bar {
+        padding: 8px 12px;
+        border-radius: 0;
+        gap: 8px;
+        max-width: 100%;
+    }
+
+    .transcript-info {
+        flex: 1;
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .transcript-text {
+        font-size: 0.78rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 140px;
+    }
+
+    .bar-actions {
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .browser-mode-tag {
+        display: none; /* Hide non-essential pill on mobile */
+    }
+
+    .refresh-btn, .stop-btn {
+        padding: 6px 10px;
+        font-size: 0.76rem;
+        border-radius: 6px;
+    }
+
+    .main-content {
+        padding: 6px 8px 8px;
+        gap: 6px;
+        max-width: 100%;
+    }
+
+    .ghost-banner-active, .ghost-banner-web {
+        padding: 5px 10px;
+        font-size: 0.74rem;
+        border-radius: 8px;
+    }
+
+    .telemetry-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+    }
+
+    .telemetry-strip {
+        width: 100%;
+        justify-content: space-between;
+        overflow-x: auto;
+        padding: 4px 10px;
+        font-size: 0.7rem;
+        border-radius: 10px;
+    }
+
+    .telemetry-chips {
+        gap: 6px;
+    }
+
+    .audio-meter-container {
+        width: 100%;
+        justify-content: space-between;
+        padding: 4px 10px;
+        font-size: 0.7rem;
+        border-radius: 10px;
+    }
+
+    .answer-box {
+        padding: 10px 12px;
+        border-radius: 12px;
+    }
+
+    .answer-box-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding-bottom: 6px;
+        margin-bottom: 6px;
+    }
+
+    .status-label-group {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .answer-actions-bar {
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+        gap: 4px;
+    }
+
+    .tool-btn {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+
+    .talking-point-card {
+        padding: 9px 11px;
+        gap: 8px;
+        border-radius: 8px;
+        border-left-width: 3px;
+    }
+
+    .point-number-badge {
+        font-size: 0.68rem;
+        padding: 1px 4px;
+    }
+
+    .point-text {
+        font-size: 0.85rem;
+        line-height: 1.48;
+    }
+
+    .answer-empty-state {
+        padding: 16px 12px;
+        min-height: 140px;
+    }
+
+    .empty-icon-glow {
+        font-size: 2.2rem;
+        margin-bottom: 8px;
+    }
+
+    .empty-title {
+        font-size: 0.98rem;
+    }
+
+    .empty-subtitle {
+        font-size: 0.8rem;
+    }
+
+    .manual-prompt-bar {
+        height: 42px;
+        gap: 6px;
+        margin-top: 2px;
+    }
+
+    .manual-prompt-bar input {
+        height: 100%;
+        padding: 0 12px;
+        border-radius: 10px;
+    }
+
+    .manual-prompt-bar button {
+        height: 100%;
+        padding: 0 14px;
+        font-size: 0.82rem;
+        border-radius: 10px;
+    }
+
+    .history-drawer-panel {
+        width: 92vw;
+        max-width: 340px;
+    }
+}
+
+/* Extra Small Phones (<= 420px) */
+@media (max-width: 420px) {
+    .app-title {
+        font-size: 0.95rem;
+    }
+
+    .setup-card {
+        padding: 12px 10px 14px;
+    }
+
+    .transcript-text {
+        max-width: 110px;
+    }
+
+    .tele-chip small {
+        font-size: 0.6rem;
+    }
+
+    .tele-chip strong {
+        font-size: 0.7rem;
+    }
+}
