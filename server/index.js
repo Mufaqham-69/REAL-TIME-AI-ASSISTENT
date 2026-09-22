@@ -3,7 +3,7 @@ const http = require('http');
 const cors = require('cors');
 const WebSocket = require('ws');
 require('dotenv').config();
-const { streamAnswer } = require('./llm');
+const { streamAnswer, generateRecruiterQuestionsAndAnswers } = require('./llm');
 const { transcribeAudioChunk } = require('./asr');
 
 const app = express();
@@ -84,6 +84,27 @@ app.post('/api/upload-resume', async (req, res) => {
     } catch (err) {
         console.error('[Server] Resume parse error:', err.message);
         res.status(500).json({ error: `Failed to parse resume: ${err.message}` });
+    }
+});
+
+// Senior Recruiter Q&A and Resume Analysis endpoint
+app.post('/api/recruiter-prep', async (req, res) => {
+    try {
+        const { resume, role } = req.body;
+        if (!resume || resume.trim().length < 20) {
+            return res.status(400).json({ error: 'Please upload or paste a valid resume first.' });
+        }
+
+        console.log(`[Server] Generating Senior Recruiter prep for role: "${role || 'General'}"...`);
+        const result = await generateRecruiterQuestionsAndAnswers({ resume, role });
+        res.json({
+            success: true,
+            summary: result.summary,
+            questions: result.questions || []
+        });
+    } catch (err) {
+        console.error('[Server] Recruiter prep error:', err.message);
+        res.status(500).json({ error: `Recruiter prep failed: ${err.message}` });
     }
 });
 

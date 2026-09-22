@@ -2,7 +2,20 @@ import React, { useState, useRef } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export default function SetupPanel({ resume, setResume, role, setRole, onStart, connected, isElectron }) {
+export default function SetupPanel({ 
+    resume, 
+    setResume, 
+    role, 
+    setRole, 
+    onStart, 
+    connected, 
+    isElectron,
+    user,
+    onLogout,
+    onAnalyzeRecruiter,
+    isAnalyzingRecruiter,
+    recruiterError
+}) {
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
     const [uploadedFile, setUploadedFile] = useState(null);
@@ -70,9 +83,8 @@ export default function SetupPanel({ resume, setResume, role, setRole, onStart, 
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
-        const files = e.dataTransfer.files;
-        if (files && files.length > 0) {
-            handleFileProcess(files[0]);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFileProcess(e.dataTransfer.files[0]);
         }
     };
 
@@ -81,13 +93,15 @@ export default function SetupPanel({ resume, setResume, role, setRole, onStart, 
         setIsDragging(true);
     };
 
-    const handleDragLeave = () => {
+    const handleDragLeave = (e) => {
+        e.preventDefault();
         setIsDragging(false);
     };
 
     const handleClearFile = (e) => {
         e.stopPropagation();
         setUploadedFile(null);
+        setResume('');
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -105,6 +119,22 @@ export default function SetupPanel({ resume, setResume, role, setRole, onStart, 
                     </div>
 
                     <div className="setup-header-status" style={{ WebkitAppRegion: 'no-drag' }}>
+                        {!isElectron && user && (
+                            <div className="user-profile-badge">
+                                <span className="user-avatar">👤</span>
+                                <span className="user-name">{user.name}</span>
+                                {onLogout && (
+                                    <button 
+                                        type="button" 
+                                        onClick={onLogout} 
+                                        className="btn-logout"
+                                        title="Sign out of Web Mode"
+                                    >
+                                        Sign Out
+                                    </button>
+                                )}
+                            </div>
+                        )}
                         <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`}>
                             {connected ? '● Server Online' : '○ Connecting...'}
                         </span>
@@ -259,13 +289,57 @@ export default function SetupPanel({ resume, setResume, role, setRole, onStart, 
 
                 {/* Bottom Action Footer */}
                 <footer className="setup-footer">
-                    <button
-                        onClick={onStart}
-                        disabled={!connected || uploading}
-                        className="start-session-btn"
-                    >
-                        {connected ? '🚀 Start Live Interview Session' : 'Connecting to Server...'}
-                    </button>
+                    {isElectron ? (
+                        /* Ghost / Electron Mode: 100% Original Untouched Button */
+                        <button
+                            type="button"
+                            onClick={onStart}
+                            disabled={!connected || uploading}
+                            className="start-session-btn"
+                        >
+                            {connected ? '🚀 Start Live Interview Session' : 'Connecting to Server...'}
+                        </button>
+                    ) : (
+                        /* Web Mode: Senior Recruiter Analysis & Live Session */
+                        <>
+                            {recruiterError && (
+                                <div className="recruiter-error-alert">
+                                    ⚠ {recruiterError}
+                                </div>
+                            )}
+                            
+                            <div className="setup-footer-buttons">
+                                <button
+                                    type="button"
+                                    onClick={onAnalyzeRecruiter}
+                                    disabled={!connected || uploading || isAnalyzingRecruiter || !resume.trim()}
+                                    className={`btn-recruiter-analyze ${resume.trim() ? 'ready' : ''}`}
+                                    title={!resume.trim() ? 'Upload or paste your resume first' : 'Generate questions and model answers as a Senior Recruiter'}
+                                >
+                                    {isAnalyzingRecruiter ? (
+                                        <>
+                                            <span className="spinner-inline"></span>
+                                            <span>Recruiter Bar-Raiser Analyzing...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>👔 Analyze as Senior Recruiter</span>
+                                            <span className="badge-tag">Questions + Answers</span>
+                                        </>
+                                    )}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={onStart}
+                                    disabled={!connected || uploading || isAnalyzingRecruiter}
+                                    className="start-session-btn"
+                                >
+                                    {connected ? '🚀 Start Live Interview Session' : 'Connecting to Server...'}
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </footer>
             </div>
         </div>

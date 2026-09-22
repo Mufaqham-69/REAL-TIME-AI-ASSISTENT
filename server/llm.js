@@ -74,4 +74,72 @@ MANDATORY RESPONSE FORMAT & VISIBILITY RULES:
     }
 }
 
-module.exports = { streamAnswer };
+async function generateRecruiterQuestionsAndAnswers({ resume, role }) {
+    console.log('[LLM] Generating Senior Recruiter Q&As based on resume...');
+
+    const prompt = `You are an elite Senior Technical Recruiter and Hiring Bar Raiser at a top-tier global tech company (e.g. Google, Meta, Amazon).
+Conduct an in-depth audit of the candidate's resume and target role.
+
+Target Role: ${role || 'Senior Software Engineer / Technical Specialist'}
+Candidate Resume Context:
+${resume}
+
+YOUR GOAL:
+1. Act as a demanding, intelligent Senior Recruiter. Analyze specific projects, technologies, claimed metrics, and experience in their resume.
+2. Formulate 5 to 7 sharp, high-probability interview questions divided across 3 vital categories:
+   - "Technical Deep-Dive": Drill into specific technologies, architectures, or technical trade-offs found on their resume.
+   - "Behavioral & STAR": Probe high-pressure situations, engineering leadership, production incidents, or team conflicts.
+   - "Resume Cross-Examination": Rigorously question specific metrics, achievements, transitions, or tool choices claimed in the resume.
+3. For EACH question:
+   - Explain what the recruiter is actually evaluating ("whatRecruiterLooksFor").
+   - Provide an "Expert Model Answer" formulated as the candidate speaking directly in the first person ("I..."), using the STAR structure, explicitly referencing projects, metrics, and tools directly mentioned in their resume.
+
+Return ONLY a valid JSON object matching this structure (no conversational chatter, no extra markdown):
+{
+  "summary": "2-3 concise sentences giving the senior recruiter's raw evaluation of the candidate's resume strengths and key vulnerability areas to prepare for.",
+  "questions": [
+    {
+      "id": 1,
+      "category": "Technical Deep-Dive",
+      "question": "Question text here...",
+      "difficulty": "Hard",
+      "whatRecruiterLooksFor": "What the interviewer is testing here...",
+      "modelAnswer": "• **Core Approach:** Direct opening strategy citing specific technologies.\\n• **Execution / Architecture:** Concrete implementation details from the resume.\\n• **Quantified Impact:** The business or performance outcome achieved."
+    }
+  ]
+}`;
+
+    const tryGenerateJson = async (modelName) => {
+        const model = genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+                temperature: 0.3,
+                topP: 0.85,
+                maxOutputTokens: 2048,
+                responseMimeType: 'application/json'
+            }
+        });
+
+        const result = await model.generateContent(prompt);
+        let rawText = result.response.text();
+        // Remove markdown code blocks if present
+        rawText = rawText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        return JSON.parse(rawText);
+    };
+
+    try {
+        const data = await tryGenerateJson(PRIMARY_MODEL);
+        console.log(`[LLM] Generated ${data.questions?.length || 0} recruiter questions using ${PRIMARY_MODEL}`);
+        return data;
+    } catch (err) {
+        console.warn(`[LLM] Primary model failed for recruiter prep:`, err.message);
+        if (PRIMARY_MODEL !== FALLBACK_MODEL) {
+            console.log(`[LLM] Trying fallback ${FALLBACK_MODEL}...`);
+            const fallbackData = await tryGenerateJson(FALLBACK_MODEL);
+            return fallbackData;
+        }
+        throw err;
+    }
+}
+
+module.exports = { streamAnswer, generateRecruiterQuestionsAndAnswers };
