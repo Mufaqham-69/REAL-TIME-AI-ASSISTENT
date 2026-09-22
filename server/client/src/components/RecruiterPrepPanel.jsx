@@ -75,13 +75,24 @@ export default function RecruiterPrepPanel({
 
     const questions = prepData?.questions || [];
     
+    const getCategoryIcon = (cat) => {
+        const l = (cat || '').toLowerCase();
+        if (l.includes('tech') || l.includes('code') || l.includes('arch') || l.includes('system')) return '💻';
+        if (l.includes('behavioral') || l.includes('star') || l.includes('culture') || l.includes('leader')) return '⭐';
+        if (l.includes('cross') || l.includes('exam') || l.includes('resume') || l.includes('deep')) return '🔍';
+        if (l.includes('problem') || l.includes('algorithm') || l.includes('design')) return '📐';
+        return '📋';
+    };
+
     // Extract unique categories with counts
     const uniqueCats = [...new Set(questions.map(q => q.category).filter(Boolean))];
     const categoryOptions = [
-        { key: 'ALL', label: `All Questions (${questions.length})` },
+        { key: 'ALL', name: 'All Questions', count: questions.length, icon: '✦' },
         ...uniqueCats.map(cat => ({
             key: cat,
-            label: `${cat} (${questions.filter(q => q.category === cat).length})`
+            name: cat,
+            count: questions.filter(q => q.category === cat).length,
+            icon: getCategoryIcon(cat)
         }))
     ];
 
@@ -145,19 +156,38 @@ export default function RecruiterPrepPanel({
                 )}
             </div>
 
-            {/* 2. Equal Aligned Filter Bar */}
+            {/* 2. Enhanced Mobile & Desktop Filter Bar */}
             <div className="recruiter-filter-bar glass-panel">
-                <span className="filter-label">Filter Category:</span>
-                <div className="filter-pills">
-                    {categoryOptions.map(({ key, label }) => (
-                        <button
-                            key={key}
-                            className={`filter-pill-btn ${selectedCategory === key ? 'active' : ''}`}
-                            onClick={() => setSelectedCategory(key)}
-                        >
-                            {label}
-                        </button>
-                    ))}
+                <div className="filter-header-row">
+                    <div className="filter-header-left">
+                        <span className="filter-header-icon">🎯</span>
+                        <span className="filter-label">Filter Category</span>
+                    </div>
+                    <span className="filter-count-badge">
+                        {selectedCategory === 'ALL' 
+                            ? `Showing all ${questions.length} questions` 
+                            : `Showing ${filteredQuestions.length} of ${questions.length}`}
+                    </span>
+                </div>
+
+                <div className="filter-pills-scroll" role="tablist" aria-label="Question category filters">
+                    {categoryOptions.map(({ key, name, count, icon }) => {
+                        const isSelected = selectedCategory === key;
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                role="tab"
+                                aria-selected={isSelected}
+                                className={`filter-pill-btn ${isSelected ? 'active' : ''}`}
+                                onClick={() => setSelectedCategory(key)}
+                            >
+                                <span className="pill-icon">{icon}</span>
+                                <span className="pill-name">{name}</span>
+                                <span className="pill-count-bubble">{count}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
